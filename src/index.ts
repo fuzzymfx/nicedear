@@ -1,4 +1,4 @@
-import Sharp, {OverlayOptions, SharpOptions} from 'sharp';
+import Sharp, { OverlayOptions, SharpOptions } from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
@@ -17,12 +17,12 @@ export type Feature = {
 	// A list of filepaths, each representing a file containing a possible choice
 	// for a feature. E.g - ['eyes-1.svg', 'assets/eyes-2.svg']
 	choices: string[];
-  
-  // Offset from top of canvas
-  top?: number;
 
-  // Offset from left side of canvas
-  left?: number;
+	// Offset from top of canvas
+	top?: number;
+
+	// Offset from left side of canvas
+	left?: number;
 };
 
 // The path of a directory that leads to a feature. Eg - './assets/head/'
@@ -114,10 +114,10 @@ async function loadFeatures(
  * @return A list file paths for a feature to be selected.
  */
 function chooseFeatureFiles(features: Feature[]): string[] {
-  return features.map((feature) => {
-    const index = Math.floor(Math.random() * feature.choices.length)
-    return feature.choices[index];
-  })
+	return features.map((feature) => {
+		const index = Math.floor(Math.random() * feature.choices.length);
+		return feature.choices[index];
+	});
 }
 
 async function loadFeatureImagePaths() {
@@ -128,32 +128,28 @@ async function loadFeatureImagePaths() {
 		['facialHair', path.join(assetsDir, 'facial-hair')],
 	];
 	const features = await loadFeatures(dirsOfPart);
-  return chooseFeatureFiles(features)
+	return chooseFeatureFiles(features);
 }
 
 async function main() {
-  const imagePaths = await loadFeatureImagePaths()
-  const layers: OverlayOptions[] = imagePaths.map(imgPath => {
-    return { input: imgPath } 
-  })
+	const imagePaths = await loadFeatureImagePaths();
+	const layers: OverlayOptions[] = imagePaths.map((imgPath) => {
+		return { input: imgPath };
+	});
 
-  layers[2].left = 130
-  layers[2].top  = 320
+	layers[2].left = 130;
+	layers[2].top = 320;
 
-  const background: SharpOptions = {
-    create: {
-      width: 600,
-      height: 600,
-      channels: 4,
-      background: { r: 255, g: 255, b: 255, alpha: 1 }
-    }
-  };
+	const background: SharpOptions = {
+		create: {
+			width: 600,
+			height: 600,
+			channels: 4,
+			background: { r: 255, g: 255, b: 255, alpha: 1 },
+		},
+	};
 
-  Sharp(background)
-  .composite(layers)
-  .png()
-  .toFile('_output/bar.png')
+	Sharp(background).composite(layers).png().toFile('_output/bar.png');
 }
 
 main().catch(console.error);
-
