@@ -3,6 +3,15 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
+
+// Data required when loading a data from disk
+export type FeatureLoadData = {
+  name: string;
+  dir: string;
+  top?: number;
+  right?: number;
+}
+
 // A 'Feature' is a portion of the image.
 // A feature can be a face, the eyes etc.
 export type Feature = {
@@ -83,7 +92,7 @@ function isPathImage(filePath: string): boolean {
  * @param featurePaths An array where each entry is of the form [featureName, featureDirPath] where `featureName`
  * represents the name of the feature and `featureDirPath` represents the directory path where the assets of that feature are located.
  * The array is assumed to be ordered by the desired z-index of the features.
- * @returns A list of features corresponding to the argument.
+ * @returns features A list of features corresponding to the argument.
  */
 async function loadFeatures(
 	featurePaths: [FeatureName, FeaturePath][]
@@ -110,17 +119,10 @@ async function loadFeatures(
 }
 
 /**
- * @param features The list of features ordered by z-index.
- * @return A list file paths for a feature to be selected.
+ * Load features from the open-peeps image set.
+ * @return features The feature list for the open peeps dataset from the filesystem.
  */
-function chooseFeatureFiles(features: Feature[]): string[] {
-	return features.map((feature) => {
-		const index = Math.floor(Math.random() * feature.choices.length);
-		return feature.choices[index];
-	});
-}
-
-async function loadFeatureImagePaths() {
+async function loadOpenPeeps(): Promise<Feature[]> {
 	const assetsDir = path.join(__dirname, 'assets');
 	const dirsOfPart: [string, string][] = [
 		['head', path.join(assetsDir, 'head')],
@@ -128,11 +130,52 @@ async function loadFeatureImagePaths() {
 		['facialHair', path.join(assetsDir, 'facial-hair')],
 	];
 	const features = await loadFeatures(dirsOfPart);
-	return chooseFeatureFiles(features);
+	return features;
+}
+
+/**
+ * @param features an array of features sorted by z-index.
+ * @param seed a string of any length
+ * @return paths A list of file paths, each representing a path to a selected image for that feature.
+ */
+export function generateImagePathsFromSeed(
+	features: Feature[],
+	seed: string
+): string[] | never {
+	// Refactored version of a simple hash function taken from here:
+	// https://werxltd.com/wp/2010/05/13/javascript-implementation-of-javas-string-hashcode-method/
+	const hashString = (s: string): number => {
+		let hash = 0;
+		if (s.length === 0) return hash;
+		for (let i = 0; i < s.length; i++) {
+			const chr = s.charCodeAt(i);
+			hash = (hash << 5) - hash + chr;
+			hash |= 0; // Convert to 32bit integer
+		}
+		return hash;
+	};
+
+	const hash = hashString(seed);
+	return features.map((feature) => {
+		const index = hash % feature.choices.length;
+		return feature.choices[index];
+	});
+}
+
+/**
+ * @param defaultSeed a default value that is returned when no seed is passed as argument
+ * @return seed A seed passed in the command line, or the default seed if none provided.
+ */
+function readSeed(defaultSeed: string): string {
+	const args = process.argv;
+	if (args.length >= 2) return args[2];
+	return defaultSeed;
 }
 
 async function main() {
-	const imagePaths = await loadFeatureImagePaths();
+	const features = await loadOpenPeeps();
+	const seed = readSeed('default-seed');
+	const imagePaths = generateImagePathsFromSeed(features, seed);
 	const layers: OverlayOptions[] = imagePaths.map((imgPath) => {
 		return { input: imgPath };
 	});
@@ -153,3 +196,4 @@ async function main() {
 }
 
 main().catch(console.error);
+
