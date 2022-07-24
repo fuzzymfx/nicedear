@@ -3,15 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
-
-// Data required when loading a data from disk
-export type FeatureLoadData = {
-  name: string;
-  dir: string;
-  top?: number;
-  right?: number;
-}
-
 // A 'Feature' is a portion of the image.
 // A feature can be a face, the eyes etc.
 export type Feature = {
@@ -87,32 +78,40 @@ function isPathImage(filePath: string): boolean {
 	return SupportedExtensions.has(ext) || SupportedExtensions.has(`.${ext}`);
 }
 
+// Data required to load feature from disk
+export type FeatureLoadData = {
+	name: string;
+	dir: string;
+	top?: number;
+	left?: number;
+};
+
 /**
  * Load features from the filesystem.
- * @param featurePaths An array where each entry is of the form [featureName, featureDirPath] where `featureName`
- * represents the name of the feature and `featureDirPath` represents the directory path where the assets of that feature are located.
+ * @param featureData An array of `FeatureLoadDatas` where each contains the name and directory path of a feature.
  * The array is assumed to be ordered by the desired z-index of the features.
  * @returns features A list of features corresponding to the argument.
  */
 async function loadFeatures(
-	featurePaths: [FeatureName, FeaturePath][]
+	featureData: FeatureLoadData[]
 ): Promise<Feature[]> {
 	async function loadFeature(
-		name: string,
-		dirPath: string,
+		fdata: FeatureLoadData,
 		zIndex: number
 	): Promise<Feature> {
-		const filesInDir = await getFilesInDir(dirPath);
+		const filesInDir = await getFilesInDir(fdata.dir);
 		const imagesInDir = filesInDir.filter(isPathImage);
 		return {
-			name,
+			name: fdata.name,
 			zIndex,
 			choices: imagesInDir,
+			top: fdata.top,
+			left: fdata.left,
 		};
 	}
 
-	const features = featurePaths.map(([fname, fpath], zIndex) =>
-		loadFeature(fname, fpath, zIndex)
+	const features = featureData.map((fdata, zIndex) =>
+		loadFeature(fdata, zIndex)
 	);
 
 	return Promise.all(features);
@@ -124,12 +123,17 @@ async function loadFeatures(
  */
 async function loadOpenPeeps(): Promise<Feature[]> {
 	const assetsDir = path.join(__dirname, 'assets');
-	const dirsOfPart: [string, string][] = [
-		['head', path.join(assetsDir, 'head')],
-		['face', path.join(assetsDir, 'face')],
-		['facialHair', path.join(assetsDir, 'facial-hair')],
+	const featureData: FeatureLoadData[] = [
+		{ name: 'head', dir: path.join(assetsDir, 'head') },
+		{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
+		{
+			name: 'facialHair',
+			dir: path.join(assetsDir, 'facial-hair'),
+			top: 340,
+			left: 190,
+		},
 	];
-	const features = await loadFeatures(dirsOfPart);
+	const features = await loadFeatures(featureData);
 	return features;
 }
 
@@ -155,7 +159,7 @@ export function generateImagePathsFromSeed(
 		return hash;
 	};
 
-	const hash = hashString(seed);
+	const hash = Math.abs(hashString(seed));
 	return features.map((feature) => {
 		const index = hash % feature.choices.length;
 		return feature.choices[index];
@@ -168,7 +172,7 @@ export function generateImagePathsFromSeed(
  */
 function readSeed(defaultSeed: string): string {
 	const args = process.argv;
-	if (args.length >= 2) return args[2];
+	if (args.length > 2) return args[2];
 	return defaultSeed;
 }
 
@@ -176,12 +180,13 @@ async function main() {
 	const features = await loadOpenPeeps();
 	const seed = readSeed('default-seed');
 	const imagePaths = generateImagePathsFromSeed(features, seed);
-	const layers: OverlayOptions[] = imagePaths.map((imgPath) => {
-		return { input: imgPath };
+	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
+		const feature = features[i];
+		const layer: OverlayOptions = { input: imgPath };
+		if (feature.top) layer.top = feature.top;
+		if (feature.left) layer.left = feature.left;
+		return layer;
 	});
-
-	layers[2].left = 130;
-	layers[2].top = 320;
 
 	const background: SharpOptions = {
 		create: {
@@ -196,4 +201,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
