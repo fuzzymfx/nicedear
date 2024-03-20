@@ -177,6 +177,8 @@ function readSeed(defaultSeed: string): string {
 }
 
 async function main() {
+	const outputDirectory = '_output';
+	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 	const features = await loadOpenPeeps();
 	const seed = readSeed('default-seed');
 	const imagePaths = generateImagePathsFromSeed(features, seed);
