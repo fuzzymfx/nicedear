@@ -126,12 +126,12 @@ async function loadOpenPeeps(): Promise<Feature[]> {
 	const featureData: FeatureLoadData[] = [
 		{ name: 'head', dir: path.join(assetsDir, 'head') },
 		{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
-		{
-			name: 'facialHair',
-			dir: path.join(assetsDir, 'facial-hair'),
-			top: 325,
-			left: 160,
-		},
+		// {
+		// 	name: 'facialHair',
+		// 	dir: path.join(assetsDir, 'facial-hair'),
+		// 	top: 325,
+		// 	left: 160,
+		// },
 	];
 	const features = await loadFeatures(featureData);
 	return features;
