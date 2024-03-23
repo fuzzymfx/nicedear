@@ -129,8 +129,8 @@ async function loadOpenPeeps(): Promise<Feature[]> {
 		{
 			name: 'facialHair',
 			dir: path.join(assetsDir, 'facial-hair'),
-			top: 340,
-			left: 190,
+			top: 325,
+			left: 160,
 		},
 	];
 	const features = await loadFeatures(featureData);
@@ -179,9 +179,17 @@ function readSeed(defaultSeed: string): string {
 async function main() {
 	const outputDirectory = '_output';
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
+
 	const features = await loadOpenPeeps();
-	const seed = readSeed('default-seed');
+
+	// Use the command line argument as the seed if it exists, otherwise generate a random seed
+	const argSeed = process.argv[2];
+	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
+
+	const seed = readSeed(seedString);
+
 	const imagePaths = generateImagePathsFromSeed(features, seed);
+
 	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
 		const feature = features[i];
 		const layer: OverlayOptions = { input: imgPath };
@@ -199,7 +207,7 @@ async function main() {
 		},
 	};
 
-	Sharp(background).composite(layers).png().toFile('_output/bar.png');
+	Sharp(background).composite(layers).png().toFile(`_output/${seed}.png`);
 }
 
 main().catch(console.error);
