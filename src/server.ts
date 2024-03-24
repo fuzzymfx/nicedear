@@ -23,7 +23,29 @@ const server = http.createServer(async (req, res) => {
 	if (requestUrl && requestUrl.pathname === '/') {
 		try {
 			const seed = requestUrl.query.seed ? requestUrl.query.seed.toString() : undefined;
-			const result = await api_call(seed);
+			const theme = requestUrl.query.theme ? requestUrl.query.theme.toString() : 'open-peeps';
+
+			// optional query parameters
+
+			const mirror = requestUrl.query.mirror === 'true';
+			const background = requestUrl.query.background ? requestUrl.query.background.toString() : undefined;
+			const skincolor = requestUrl.query.skincolor ? requestUrl.query.skincolor.toString() : undefined;
+
+			const scale = requestUrl.query.scale ? parseInt(requestUrl.query.scale.toString()) : undefined;
+
+			const transalteX
+				= requestUrl.query.transalteX ? parseInt(requestUrl.query.transalteX.toString()) : undefined;
+			const transalteY
+				= requestUrl.query.transalteY ? parseInt(requestUrl.query.transalteY.toString()) : undefined;
+
+			const result = await api_call(seed, theme, {
+				mirror,
+				background,
+				skincolor,
+				scale,
+				transalteX,
+				transalteY
+			});
 			const image = await getImageFromPath(result);
 
 			res.writeHead(200, { 'Content-Type': 'image/png' });
@@ -31,11 +53,11 @@ const server = http.createServer(async (req, res) => {
 		} catch (error) {
 			console.error(error);
 			res.writeHead(500, { 'Content-Type': 'text/plain' });
-			res.end('An error occurred while generating the image.');
+			res.end(`An error occurred while generating the image.: ${error}`);
 		}
 	} else {
 		res.writeHead(500, { 'Content-Type': 'text/plain' });
-		res.end('Invalid request.');
+		res.end(`Invalid request.: ${req.url}`);
 	}
 });
 

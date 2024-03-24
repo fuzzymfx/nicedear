@@ -2,6 +2,7 @@ import Sharp, { OverlayOptions, SharpOptions } from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
+import { hexToRgbA } from './utils';
 
 // A 'Feature' is a portion of the image.
 // A feature can be a face, the eyes etc.
@@ -25,15 +26,14 @@ export type Feature = {
 	left?: number;
 };
 
-enum Gender {
-	Male = 'm',
-	Female = 'f',
-	Other = 'o'
-}
-
-
 interface Params {
-	gender?: Gender;
+	mirror?: boolean;
+	background?: string;
+	skincolor?: string;
+	scale?: number;
+	transalteX?: number;
+	transalteY?: number;
+	features?: string[];
 	// Add other properties if needed
 }
 
@@ -134,23 +134,37 @@ async function loadFeatures(
  * @param theme The theme of the feature set to load.
  * @returns features The feature list for the theme from the filesystem.
  */
-async function loadFeaturesFromDir(theme?: string, gender?: string): Promise<Feature[]> {
+async function loadFeaturesFromDir(theme?: string, requiredFeatures?: Array<string>): Promise<Feature[]> {
 	let assetsDir: string;
 	if (!theme) {
 		assetsDir = path.join(__dirname, 'assets', 'open-peeps');
 	} else {
 		assetsDir = path.join(__dirname, 'assets', theme);
 	}
-	const featureData: FeatureLoadData[] = [
-		{ name: 'head', dir: path.join(assetsDir, 'head') },
-		{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
-		// {
-		// 	name: 'facialHair',
-		// 	dir: path.join(assetsDir, 'facial-hair'),
-		// 	top: 325,
-		// 	left: 160,
-		// },
-	];
+	let featureData: FeatureLoadData[] = [];
+	if (!requiredFeatures || requiredFeatures.length === 0) {
+		featureData = [
+			{ name: 'head', dir: path.join(assetsDir, 'head') },
+			{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
+		];
+	} else {
+		if (requiredFeatures.includes('head')) {
+			featureData.push({ name: 'head', dir: path.join(assetsDir, 'head') });
+		}
+
+		if (requiredFeatures.includes('face')) {
+			featureData.push({ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 });
+		}
+
+		if (requiredFeatures.includes('facialHair')) {
+			featureData.push({
+				name: 'facialHair',
+				dir: path.join(assetsDir, 'facial-hair'),
+				top: 325,
+				left: 160,
+			});
+		}
+	}
 
 	const features = await loadFeatures(featureData);
 	return features;
@@ -239,19 +253,28 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 
 	// check if file exists
 
-	if (file_exists(`_output/${argSeed}.png`)) {
-		console.log(`File exists: _output/${argSeed}.png`);
-		return `_output/${argSeed}.png`;
+	const paramsString = JSON.stringify(params).replace(/[{}":]/g, '');
+
+	if (file_exists(`_output/${argSeed}_${theme}_${paramsString}.png`)) {
+		console.log(`File exists: _output/${argSeed}_${theme}_${paramsString}.png`);
+		return `_output/${argSeed}_${theme}_${paramsString}.png`;
 	}
-	console.log(`Creating: _output/${argSeed}.png`);
+	console.log(`Creating: _output/${argSeed}_${theme}_${paramsString}.png`);
 
 	// check if the output directory exists
 	const outputDirectory = '_output';
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 
-	const gender = params?.gender;
+	const mirror = params?.mirror;
+	const backgroundColor = params?.background;
+	const skincolor = params?.skincolor;
+	const scale = params?.scale;
+	const translateX = params?.transalteX;
+	const translateY = params?.transalteY;
 
-	const features = await loadFeaturesFromDir(theme, gender);
+	const requiredFeatures = params?.features;
+
+	const features = await loadFeaturesFromDir(theme, requiredFeatures);
 
 	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
 	const seed = readSeed(seedString);
@@ -266,18 +289,21 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 		return layer;
 	});
 
+	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
+	const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
+
 	const background: SharpOptions = {
 		create: {
 			width: 600,
 			height: 600,
 			channels: 4,
-			background: { r: 255, g: 255, b: 255, alpha: 1 },
+			background: bg,
 		},
 	};
 
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}.png`);
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}_${theme}_${paramsString}.png`);
 
-	return `_output/${seed}.png`;
+	return `_output/${seed}_${theme}_${paramsString}.png`;
 }
 
 main().catch(console.error);
