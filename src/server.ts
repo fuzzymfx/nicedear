@@ -28,8 +28,10 @@ const server = http.createServer(async (req, res) => {
 			// optional query parameters
 
 			const mirror = requestUrl.query.mirror === 'true';
+			const rotate = requestUrl.query.rotate ? parseInt(requestUrl.query.rotate.toString()) : undefined;
 			const background = requestUrl.query.background ? requestUrl.query.background.toString() : undefined;
 			const skincolor = requestUrl.query.skincolor ? requestUrl.query.skincolor.toString() : undefined;
+			const hairColor = requestUrl.query.hairColor ? requestUrl.query.hairColor.toString() : undefined;
 
 			const scale = requestUrl.query.scale ? parseInt(requestUrl.query.scale.toString()) : undefined;
 
@@ -40,8 +42,10 @@ const server = http.createServer(async (req, res) => {
 
 			const result = await api_call(seed, theme, {
 				mirror,
+				rotate,
 				background,
 				skincolor,
+				hairColor,
 				scale,
 				transalteX,
 				transalteY

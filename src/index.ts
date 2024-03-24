@@ -28,8 +28,10 @@ export type Feature = {
 
 interface Params {
 	mirror?: boolean;
+	rotate?: number;
 	background?: string;
 	skincolor?: string;
+	hairColor?: string;
 	scale?: number;
 	transalteX?: number;
 	transalteY?: number;
@@ -266,8 +268,10 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 
 	const mirror = params?.mirror;
+	const rotate = params?.rotate;
 	const backgroundColor = params?.background;
 	const skincolor = params?.skincolor;
+	const hairColor = params?.hairColor;
 	const scale = params?.scale;
 	const translateX = params?.transalteX;
 	const translateY = params?.transalteY;
@@ -291,6 +295,7 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 
 	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
 	const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
+	const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
 
 	const background: SharpOptions = {
 		create: {
