@@ -1,1 +1,1 @@
-web: npm install && npm run build && node dist/server.js
+web: npm install && npm install -g typescript && npm run build && node dist/server.js
