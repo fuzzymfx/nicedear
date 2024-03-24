@@ -25,6 +25,18 @@ export type Feature = {
 	left?: number;
 };
 
+enum Gender {
+	Male = 'm',
+	Female = 'f',
+	Other = 'o'
+}
+
+
+interface Params {
+	gender?: Gender;
+	// Add other properties if needed
+}
+
 // The path of a directory that leads to a feature. Eg - './assets/head/'
 export type FeaturePath = string;
 // The name of a feature. Eg - 'face', 'facial-hair', 'head'
@@ -118,11 +130,17 @@ async function loadFeatures(
 }
 
 /**
- * Load features from the open-peeps image set.
- * @return features The feature list for the open peeps dataset from the filesystem.
+ * Load features from a directory.
+ * @param theme The theme of the feature set to load.
+ * @returns features The feature list for the theme from the filesystem.
  */
-async function loadOpenPeeps(): Promise<Feature[]> {
-	const assetsDir = path.join(__dirname, 'assets');
+async function loadFeaturesFromDir(theme?: string, gender?: string): Promise<Feature[]> {
+	let assetsDir: string;
+	if (!theme) {
+		assetsDir = path.join(__dirname, 'assets', 'open-peeps');
+	} else {
+		assetsDir = path.join(__dirname, 'assets', theme);
+	}
 	const featureData: FeatureLoadData[] = [
 		{ name: 'head', dir: path.join(assetsDir, 'head') },
 		{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
@@ -133,6 +151,7 @@ async function loadOpenPeeps(): Promise<Feature[]> {
 		// 	left: 160,
 		// },
 	];
+
 	const features = await loadFeatures(featureData);
 	return features;
 }
@@ -180,7 +199,7 @@ async function main() {
 	const outputDirectory = '_output';
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 
-	const features = await loadOpenPeeps();
+	const features = await loadFeaturesFromDir('open-peeps');
 
 	// Use the command line argument as the seed if it exists, otherwise generate a random seed
 	const argSeed = process.argv[2];
@@ -216,7 +235,7 @@ function file_exists(file: string): boolean {
 }
 
 
-export async function api_call(argSeed?: string): Promise<string> {
+export async function api_call(argSeed?: string, theme?: string, params?: Params): Promise<string> {
 
 	// check if file exists
 
@@ -230,7 +249,9 @@ export async function api_call(argSeed?: string): Promise<string> {
 	const outputDirectory = '_output';
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 
-	const features = await loadOpenPeeps();
+	const gender = params?.gender;
+
+	const features = await loadFeaturesFromDir(theme, gender);
 
 	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
 	const seed = readSeed(seedString);
