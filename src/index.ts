@@ -210,4 +210,53 @@ async function main() {
 	Sharp(background).composite(layers).png().toFile(`_output/${seed}.png`);
 }
 
+
+function file_exists(file: string): boolean {
+	return fs.existsSync(file);
+}
+
+
+export async function api_call(argSeed?: string): Promise<string> {
+
+	// check if file exists
+
+	if (file_exists(`_output/${argSeed}.png`)) {
+		console.log(`File exists: _output/${argSeed}.png`);
+		return `_output/${argSeed}.png`;
+	}
+	console.log(`Creating: _output/${argSeed}.png`);
+
+	// check if the output directory exists
+	const outputDirectory = '_output';
+	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
+
+	const features = await loadOpenPeeps();
+
+	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
+	const seed = readSeed(seedString);
+
+	const imagePaths = generateImagePathsFromSeed(features, seed);
+
+	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
+		const feature = features[i];
+		const layer: OverlayOptions = { input: imgPath };
+		if (feature.top) layer.top = feature.top;
+		if (feature.left) layer.left = feature.left;
+		return layer;
+	});
+
+	const background: SharpOptions = {
+		create: {
+			width: 600,
+			height: 600,
+			channels: 4,
+			background: { r: 255, g: 255, b: 255, alpha: 1 },
+		},
+	};
+
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}.png`);
+
+	return `_output/${seed}.png`;
+}
+
 main().catch(console.error);
