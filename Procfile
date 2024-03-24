@@ -1,1 +1,1 @@
-web: npm run build && node dist/server.js
+web: pnpm install && npm run build && node dist/server.js
