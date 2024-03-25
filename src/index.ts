@@ -203,13 +203,21 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 	const imagePaths = generateImagePathsFromSeed(features, seed);
 
 	// add image paths to layers to create the final image
-	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
+	const layers: OverlayOptions[] = await Promise.all(imagePaths.map(async (imgPath, i) => {
 		const feature = features[i];
-		const layer: OverlayOptions = { input: imgPath };
+		let image: Sharp.Sharp = Sharp(imgPath);
+
+		// Apply transformations to each layer
+		if (params?.scale || params?.mirror) {
+			image = await applyTransformations(image, params);
+		}
+
+		const buffer = await image.toBuffer();
+		const layer: OverlayOptions = { input: buffer };
 		if (feature.top) layer.top = feature.top + (translateY || 0);
 		if (feature.left) layer.left = feature.left + (translateX || 0);
 		return layer;
-	});
+	}));
 
 	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
 
