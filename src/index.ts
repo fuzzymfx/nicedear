@@ -1,8 +1,11 @@
 import Sharp, { OverlayOptions, SharpOptions } from 'sharp';
 import path from 'path';
 import fs from 'fs';
-import { promisify } from 'util';
-import { file_exists, hexToRgbA } from './utils';
+
+import {
+	getFilesInDir, isPathImage,
+	readSeed, file_exists, hexToRgbA
+} from './utils';
 
 // A 'Feature' is a portion of the image.
 // A feature can be a face, the eyes etc.
@@ -44,53 +47,7 @@ export type FeaturePath = string;
 // The name of a feature. Eg - 'face', 'facial-hair', 'head'
 export type FeatureName = string;
 
-export type ImageExt = 'svg' | 'jpg' | 'png' | 'jpeg';
-const SupportedExtensions: Set<string> = new Set([
-	'.svg',
-	'.jpg',
-	'.png',
-	'.jpeg',
-]);
 
-const asyncReadDir = promisify(fs.readdir);
-const asyncStat = promisify(fs.stat);
-
-/**
- * @param path_ Path to a file or directory.
- * @returns `true` if the path is that of a file.
- */
-async function isFile(path_: fs.PathLike): Promise<boolean> {
-	const stat = await asyncStat(path_);
-	return stat.isFile();
-}
-
-/**
- * @param dirpath path to a directory.
- * @returns list containing all files in that directory.
- */
-async function getFilesInDir(dirpath: string): Promise<string[]> {
-	const itemsInDir = (await asyncReadDir(dirpath)).map((fpath) =>
-		path.join(dirpath, fpath)
-	);
-
-	const filesInDir: string[] = [];
-	for (const dirItem of itemsInDir) {
-		if (await isFile(dirItem)) {
-			filesInDir.push(dirItem);
-		}
-	}
-
-	return filesInDir;
-}
-
-/**
- * @param filePath Path to a file that might be an image.
- * @returns `true` if the path is that of an image.
- */
-function isPathImage(filePath: string): boolean {
-	const ext = path.extname(filePath);
-	return SupportedExtensions.has(ext) || SupportedExtensions.has(`.${ext}`);
-}
 
 // Data required to load feature from disk
 export type FeatureLoadData = {
@@ -202,39 +159,12 @@ export function generateImagePathsFromSeed(
 }
 
 /**
- * @param defaultSeed a default value that is returned when no seed is passed as argument
- * @return seed A seed passed in the command line, or the default seed if none provided.
+ * @param argSeed The seed passed as an argument to the program.
+ * @param theme The theme of the feature set to use.
+ * @param params The parameters to use for image generation.
+ * @returns The path to the generated image.
  */
-function readSeed(defaultSeed: string): string {
-	const args = process.argv;
-	if (args.length > 2) return args[2];
-	return defaultSeed;
-}
-
-async function main() {
-	const argSeed = process.argv[2];
-	const theme = process.argv[3];
-	const params: Params = {
-		mirror: process.argv[4] === 'true',
-		rotate: parseInt(process.argv[5]),
-		background: process.argv[6],
-		skincolor: process.argv[7],
-		hairColor: process.argv[8],
-		scale: parseFloat(process.argv[9]),
-		transalteX: parseFloat(process.argv[10]),
-		transalteY: parseFloat(process.argv[11]),
-		features: process.argv[12] ? process.argv[12].split(',') : undefined
-	};
-
-	try {
-		await api_call(argSeed, theme, params);
-	} catch (error) {
-		console.error(error);
-	}
-}
-
 export async function api_call(argSeed?: string, theme?: string, params?: Params): Promise<string> {
-
 	// sync output directory; create if it doesn't exist
 	const outputDirectory = '_output';
 	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
@@ -253,7 +183,6 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	};
 
 	const pathHash = Math.abs(hashString(`${argSeed}_${theme}_${paramsString}`));
-
 
 	// return existing file 
 	if (file_exists(`_output/${argSeed}${pathHash}.png`)) {
@@ -306,6 +235,29 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 
 	return `_output/${seed}${pathHash}.png`;
+}
+
+
+async function main() {
+	const argSeed = process.argv[2];
+	const theme = process.argv[3];
+	const params: Params = {
+		mirror: process.argv[4] === 'true',
+		rotate: parseInt(process.argv[5]),
+		background: process.argv[6],
+		skincolor: process.argv[7],
+		hairColor: process.argv[8],
+		scale: parseFloat(process.argv[9]),
+		transalteX: parseFloat(process.argv[10]),
+		transalteY: parseFloat(process.argv[11]),
+		features: process.argv[12] ? process.argv[12].split(',') : undefined
+	};
+
+	try {
+		await api_call(argSeed, theme, params);
+	} catch (error) {
+		console.error(error);
+	}
 }
 
 main().catch(console.error);
