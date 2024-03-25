@@ -235,7 +235,13 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 			background: bg,
 		},
 	};
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	if (params?.rotate || params?.scale) {
+		const img = await applyTransformations(Sharp(background), params);
+		await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+		return;
+	}
+	else
+		await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 
 }
 
