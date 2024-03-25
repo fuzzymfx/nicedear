@@ -159,6 +159,84 @@ export function generateImagePathsFromSeed(
 }
 
 /**
+ * 
+ * @param image: A sharp instance of the image to be transformed.
+ * @param params: The parameters to use for image transformation.
+ * @returns The transformed image.
+ */
+
+async function applyTransformations(image: Sharp.Sharp, params: Params): Promise<Sharp.Sharp> {
+	if (params.mirror) {
+		image = image.flop();
+	}
+	if (params.scale) {
+		const metadata = await image.metadata();
+		if (metadata?.width === undefined) throw new Error('Image metadata is undefined');
+
+		const width = Math.round(metadata?.width * params.scale);
+		image = image.resize(width);
+	}
+	return image;
+}
+
+/**
+ * 
+ * @param pathHash: A hash generated from the seed, theme and params, used to name the output file.
+ * @param seed: A string of any length.
+ * @param theme: The theme of the feature set to use.
+ * @param params: The parameters to use for image generation.
+ */
+
+async function buildImage(pathHash: number, seed: string, theme?: string, params?: Params): Promise<void> {
+
+	const backgroundColor = params?.background;
+	// const skincolor = params?.skincolor;
+	// const hairColor = params?.hairColor;
+
+	const translateX = params?.transalteX;
+	const translateY = params?.transalteY;
+
+	const requiredFeatures = params?.features;
+	const features = await loadFeaturesFromDir(theme, requiredFeatures);
+
+	// specific image paths generated from the seed
+	const imagePaths = generateImagePathsFromSeed(features, seed);
+
+	// add image paths to layers to create the final image
+	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
+		const feature = features[i];
+		const layer: OverlayOptions = { input: imgPath };
+		if (feature.top) layer.top = feature.top + (translateY || 0);
+		if (feature.left) layer.left = feature.left + (translateX || 0);
+		return layer;
+	});
+
+	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
+
+	// const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
+	// const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
+
+	const background: SharpOptions = {
+		create: {
+			width: 600,
+			height: 600,
+			channels: 4,
+			background: bg,
+		},
+	};
+
+	if (params?.scale || params?.mirror) {
+		const sharpInstance: Sharp.Sharp = Sharp(background).composite(layers);
+		const image: Sharp.Sharp = await applyTransformations(sharpInstance, params);
+		await image.png().toFile(`_output/${seed}${pathHash}.png`);
+	}
+
+	else await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+
+}
+
+
+/**
  * @param argSeed The seed passed as an argument to the program.
  * @param theme The theme of the feature set to use.
  * @param params The parameters to use for image generation.
@@ -191,52 +269,13 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	}
 
 	console.log(`Creating: _output/${argSeed}${pathHash}.png`);
-
-	const mirror = params?.mirror;
-	const rotate = params?.rotate;
-	const backgroundColor = params?.background;
-	const skincolor = params?.skincolor;
-	const hairColor = params?.hairColor;
-	const scale = params?.scale;
-	const translateX = params?.transalteX;
-	const translateY = params?.transalteY;
-
-	const requiredFeatures = params?.features;
-	const features = await loadFeaturesFromDir(theme, requiredFeatures);
-
 	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
 	const seed = readSeed(seedString);
 
-	// specific image paths generated from the seed
-	const imagePaths = generateImagePathsFromSeed(features, seed);
-
-	// add image paths to layers to create the final image
-	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
-		const feature = features[i];
-		const layer: OverlayOptions = { input: imgPath };
-		if (feature.top) layer.top = feature.top;
-		if (feature.left) layer.left = feature.left;
-		return layer;
-	});
-
-	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
-	const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
-	const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
-
-	const background: SharpOptions = {
-		create: {
-			width: 600,
-			height: 600,
-			channels: 4,
-			background: bg,
-		},
-	};
-
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	await buildImage(pathHash, seed, theme, params);
 
 	return `_output/${seed}${pathHash}.png`;
 }
-
 
 async function main() {
 	const argSeed = process.argv[2];
