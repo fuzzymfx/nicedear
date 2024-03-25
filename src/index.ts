@@ -119,8 +119,8 @@ async function loadFeaturesFromDir(theme?: string, requiredFeatures?: Array<stri
 			featureData.push({
 				name: 'facialHair',
 				dir: path.join(assetsDir, 'facial-hair'),
-				top: 325,
-				left: 160,
+				top: 175,
+				left: 200,
 			});
 		}
 	}
@@ -169,6 +169,9 @@ async function applyTransformations(image: Sharp.Sharp, params: Params): Promise
 	if (params.mirror) {
 		image = image.flop();
 	}
+	if (params.rotate) {
+		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } });
+	}
 	if (params.scale) {
 		const metadata = await image.metadata();
 		if (metadata?.width === undefined) throw new Error('Image metadata is undefined');
@@ -214,8 +217,8 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 
 		const buffer = await image.toBuffer();
 		const layer: OverlayOptions = { input: buffer };
-		if (feature.top) layer.top = feature.top + (translateY || 0);
-		if (feature.left) layer.left = feature.left + (translateX || 0);
+		// layer.top = (feature.top || 0) + (translateY || 0);
+		// layer.left = (feature.left || 0) + (translateX || 0);
 		return layer;
 	}));
 
@@ -232,14 +235,7 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 			background: bg,
 		},
 	};
-
-	if (params?.scale || params?.mirror) {
-		const sharpInstance: Sharp.Sharp = Sharp(background).composite(layers);
-		const image: Sharp.Sharp = await applyTransformations(sharpInstance, params);
-		await image.png().toFile(`_output/${seed}${pathHash}.png`);
-	}
-
-	else await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 
 }
 
