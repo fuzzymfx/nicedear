@@ -166,18 +166,23 @@ export function generateImagePathsFromSeed(
  */
 
 async function applyTransformations(image: Sharp.Sharp, params: Params): Promise<Sharp.Sharp> {
+	const metadata = await image.metadata();
+	const originalWidth = metadata.width;
+	const originalHeight = metadata.height;
+
 	if (params.mirror) {
 		image = image.flop();
 	}
 	if (params.rotate) {
-		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } });
+		// Rotate and then resize the image to its original dimensions
+		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } })
+			.resize(originalWidth, originalHeight, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } });
 	}
 	if (params.scale) {
-		const metadata = await image.metadata();
-		if (metadata?.width === undefined) throw new Error('Image metadata is undefined');
-
-		const width = Math.round(metadata?.width * params.scale);
-		image = image.resize(width);
+		if (originalWidth) {
+			const width = Math.round(originalWidth * params.scale);
+			image = image.resize(width);
+		}
 	}
 	return image;
 }
@@ -204,6 +209,8 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 
 	// specific image paths generated from the seed
 	const imagePaths = generateImagePathsFromSeed(features, seed);
+	let maxWidth = 0;
+	let maxHeight = 0;
 
 	// add image paths to layers to create the final image
 	const layers: OverlayOptions[] = await Promise.all(imagePaths.map(async (imgPath, i) => {
@@ -214,6 +221,20 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 		if (params?.scale || params?.mirror) {
 			image = await applyTransformations(image, params);
 		}
+		const metadata = await image.metadata();
+		if (metadata.width && metadata.height) {
+			if (params?.rotate) {
+				const angleInRadians = params.rotate * (Math.PI / 180);
+				const newWidth = Math.abs(Math.sin(angleInRadians)) * metadata.height + Math.abs(Math.cos(angleInRadians)) * metadata.width;
+				const newHeight = Math.abs(Math.sin(angleInRadians)) * metadata.width + Math.abs(Math.cos(angleInRadians)) * metadata.height;
+				maxWidth = Math.max(maxWidth, Math.round(newWidth));
+				maxHeight = Math.max(maxHeight, Math.round(newHeight));
+			} else {
+				maxWidth = Math.max(maxWidth, metadata.width);
+				maxHeight = Math.max(maxHeight, metadata.height);
+			}
+		}
+
 
 		const buffer = await image.toBuffer();
 		const layer: OverlayOptions = { input: buffer };
@@ -222,26 +243,22 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 		return layer;
 	}));
 
-	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
+	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 0 };
 
 	// const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
 	// const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
 
+	console.log(`Max Width: ${maxWidth}, Max Height: ${maxHeight}`);
+
 	const background: SharpOptions = {
 		create: {
-			width: 600,
-			height: 600,
+			width: maxWidth || 600,
+			height: maxHeight || 600,
 			channels: 4,
 			background: bg,
 		},
 	};
-	if (params?.rotate || params?.scale) {
-		const img = await applyTransformations(Sharp(background), params);
-		await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
-		return;
-	}
-	else
-		await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 
 }
 
