@@ -1,3 +1,6 @@
+
+import fs from 'fs';
+
 export function hexToRgbA(hex: string, alpha = 1) {
 	let c;
 	if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
@@ -14,4 +17,8 @@ export function hexToRgbA(hex: string, alpha = 1) {
 		};
 	}
 	throw new Error('Bad Hex');
+}
+
+export function file_exists(file: string): boolean {
+	return fs.existsSync(file);
 }

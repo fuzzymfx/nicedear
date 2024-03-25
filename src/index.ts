@@ -2,7 +2,7 @@ import Sharp, { OverlayOptions, SharpOptions } from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
-import { hexToRgbA } from './utils';
+import { file_exists, hexToRgbA } from './utils';
 
 // A 'Feature' is a portion of the image.
 // A feature can be a face, the eyes etc.
@@ -212,60 +212,56 @@ function readSeed(defaultSeed: string): string {
 }
 
 async function main() {
-	const outputDirectory = '_output';
-	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
-
-	const features = await loadFeaturesFromDir('open-peeps');
-
-	// Use the command line argument as the seed if it exists, otherwise generate a random seed
 	const argSeed = process.argv[2];
-	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
-
-	const seed = readSeed(seedString);
-
-	const imagePaths = generateImagePathsFromSeed(features, seed);
-
-	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
-		const feature = features[i];
-		const layer: OverlayOptions = { input: imgPath };
-		if (feature.top) layer.top = feature.top;
-		if (feature.left) layer.left = feature.left;
-		return layer;
-	});
-
-	const background: SharpOptions = {
-		create: {
-			width: 600,
-			height: 600,
-			channels: 4,
-			background: { r: 255, g: 255, b: 255, alpha: 1 },
-		},
+	const theme = process.argv[3];
+	const params: Params = {
+		mirror: process.argv[4] === 'true',
+		rotate: parseInt(process.argv[5]),
+		background: process.argv[6],
+		skincolor: process.argv[7],
+		hairColor: process.argv[8],
+		scale: parseFloat(process.argv[9]),
+		transalteX: parseFloat(process.argv[10]),
+		transalteY: parseFloat(process.argv[11]),
+		features: process.argv[12] ? process.argv[12].split(',') : undefined
 	};
 
-	Sharp(background).composite(layers).png().toFile(`_output/${seed}.png`);
+	try {
+		await api_call(argSeed, theme, params);
+	} catch (error) {
+		console.error(error);
+	}
 }
-
-
-function file_exists(file: string): boolean {
-	return fs.existsSync(file);
-}
-
 
 export async function api_call(argSeed?: string, theme?: string, params?: Params): Promise<string> {
 
-	// check if file exists
+	// sync output directory; create if it doesn't exist
+	const outputDirectory = '_output';
+	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
 
 	const paramsString = JSON.stringify(params).replace(/[{}":]/g, '');
 
-	if (file_exists(`_output/${argSeed}_${theme}_${paramsString}.png`)) {
-		console.log(`File exists: _output/${argSeed}_${theme}_${paramsString}.png`);
-		return `_output/${argSeed}_${theme}_${paramsString}.png`;
-	}
-	console.log(`Creating: _output/${argSeed}_${theme}_${paramsString}.png`);
+	const hashString = (s: string): number => {
+		let hash = 0;
+		if (s.length === 0) return hash;
+		for (let i = 0; i < s.length; i++) {
+			const chr = s.charCodeAt(i);
+			hash = (hash << 5) - hash + chr;
+			hash |= 0; // Convert to 32bit integer
+		}
+		return hash;
+	};
 
-	// check if the output directory exists
-	const outputDirectory = '_output';
-	fs.mkdirSync(path.resolve(outputDirectory), { recursive: true });
+	const pathHash = Math.abs(hashString(`${argSeed}_${theme}_${paramsString}`));
+
+
+	// return existing file 
+	if (file_exists(`_output/${argSeed}${pathHash}.png`)) {
+		console.log(`File exists: _output/${argSeed}${pathHash}.png`);
+		return `_output/${argSeed}${pathHash}.png`;
+	}
+
+	console.log(`Creating: _output/${argSeed}${pathHash}.png`);
 
 	const mirror = params?.mirror;
 	const rotate = params?.rotate;
@@ -277,14 +273,15 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	const translateY = params?.transalteY;
 
 	const requiredFeatures = params?.features;
-
 	const features = await loadFeaturesFromDir(theme, requiredFeatures);
 
 	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
 	const seed = readSeed(seedString);
 
+	// specific image paths generated from the seed
 	const imagePaths = generateImagePathsFromSeed(features, seed);
 
+	// add image paths to layers to create the final image
 	const layers: OverlayOptions[] = imagePaths.map((imgPath, i) => {
 		const feature = features[i];
 		const layer: OverlayOptions = { input: imgPath };
@@ -306,9 +303,9 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 		},
 	};
 
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}_${theme}_${paramsString}.png`);
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 
-	return `_output/${seed}_${theme}_${paramsString}.png`;
+	return `_output/${seed}${pathHash}.png`;
 }
 
 main().catch(console.error);
