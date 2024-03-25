@@ -14,26 +14,24 @@ const getImageFromPath = async (path: string): Promise<Buffer> => {
 	});
 };
 
-
-
 const server = http.createServer(async (req, res) => {
 
 	const requestUrl = req.url ? url.parse(req.url, true) : null;
 
 	if (requestUrl && requestUrl.pathname === '/') {
+
 		try {
 			const seed = requestUrl.query.seed ? requestUrl.query.seed.toString() : undefined;
 			const theme = requestUrl.query.theme ? requestUrl.query.theme.toString() : 'open-peeps';
 
 			// optional query parameters
-
 			const mirror = requestUrl.query.mirror === 'true';
 			const rotate = requestUrl.query.rotate ? parseInt(requestUrl.query.rotate.toString()) : undefined;
 			const background = requestUrl.query.background ? requestUrl.query.background.toString() : undefined;
 			const skincolor = requestUrl.query.skincolor ? requestUrl.query.skincolor.toString() : undefined;
 			const hairColor = requestUrl.query.hairColor ? requestUrl.query.hairColor.toString() : undefined;
 
-			const scale = requestUrl.query.scale ? parseInt(requestUrl.query.scale.toString()) : undefined;
+			const scale = requestUrl.query.scale ? parseFloat(requestUrl.query.scale.toString()) : undefined;
 
 			const transalteX
 				= requestUrl.query.transalteX ? parseInt(requestUrl.query.transalteX.toString()) : undefined;
