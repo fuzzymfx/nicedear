@@ -165,21 +165,22 @@ export function generateImagePathsFromSeed(
  * @returns The transformed image.
  */
 
-async function applyTransformations(image: Sharp.Sharp, params: Params): Promise<Sharp.Sharp> {
+async function applyTransformations(image: Sharp.Sharp, params?: Params): Promise<Sharp.Sharp> {
 	const metadata = await image.metadata();
 	const originalWidth = metadata.width;
 
-	if (params.mirror) {
+	if (params?.mirror) {
 		image = image.flop();
 	}
-	if (params.rotate) {
+	if (params?.rotate) {
 		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } });
 	}
-	if (params.scale) {
-		if (originalWidth) {
-			const width = Math.round(originalWidth * params.scale);
-			image = image.resize(width);
+	if (originalWidth) {
+		let width = Math.round(originalWidth * 0.5); // Always scale to half
+		if (params?.scale) {
+			width = Math.round(width * params.scale); // Apply additional scale if provided
 		}
+		image = image.resize(width);
 	}
 	return image;
 }
@@ -206,8 +207,8 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 
 	// specific image paths generated from the seed
 	const imagePaths = generateImagePathsFromSeed(features, seed);
-	let maxWidth = 0;
-	let maxHeight = 0;
+	// let maxWidth = 0;
+	// let maxHeight = 0;
 
 	// add image paths to layers to create the final image
 	const layers: OverlayOptions[] = await Promise.all(imagePaths.map(async (imgPath, i) => {
@@ -215,22 +216,21 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 		let image: Sharp.Sharp = Sharp(imgPath);
 
 		// Apply transformations to each layer
-		if (params?.scale || params?.mirror) {
-			image = await applyTransformations(image, params);
-		}
-		const metadata = await image.metadata();
-		if (metadata.width && metadata.height) {
-			if (params?.rotate) {
-				const angleInRadians = params.rotate * (Math.PI / 180);
-				const newWidth = Math.abs(Math.sin(angleInRadians)) * metadata.height + Math.abs(Math.cos(angleInRadians)) * metadata.width;
-				const newHeight = Math.abs(Math.sin(angleInRadians)) * metadata.width + Math.abs(Math.cos(angleInRadians)) * metadata.height;
-				maxWidth = Math.max(maxWidth, Math.round(newWidth));
-				maxHeight = Math.max(maxHeight, Math.round(newHeight));
-			} else {
-				maxWidth = Math.max(maxWidth, metadata.width);
-				maxHeight = Math.max(maxHeight, metadata.height);
-			}
-		}
+		image = await applyTransformations(image, params);
+
+		// const metadata = await image.metadata();
+		// if (metadata.width && metadata.height) {
+		// 	if (params?.rotate) {
+		// 		const angleInRadians = params.rotate * (Math.PI / 180);
+		// 		const newWidth = Math.abs(Math.sin(angleInRadians)) * metadata.height + Math.abs(Math.cos(angleInRadians)) * metadata.width;
+		// 		const newHeight = Math.abs(Math.sin(angleInRadians)) * metadata.width + Math.abs(Math.cos(angleInRadians)) * metadata.height;
+		// 		maxWidth = Math.max(maxWidth, Math.round(newWidth));
+		// 		maxHeight = Math.max(maxHeight, Math.round(newHeight));
+		// 	} else {
+		// 		maxWidth = Math.max(maxWidth, metadata.width);
+		// 		maxHeight = Math.max(maxHeight, metadata.height);
+		// 	}
+		// }
 
 
 		const buffer = await image.toBuffer();
@@ -247,17 +247,18 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 
 	const background: SharpOptions = {
 		create: {
-			width: maxWidth || 600,
-			height: maxHeight || 600,
+			width: 500,
+			height: 500,
 			channels: 4,
 			background: bg,
 		},
 	};
-	if (params?.rotate || params?.scale || params?.mirror) {
-		const img = await applyTransformations(Sharp(background), params);
-		await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
-	} else
-		await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	// if (params?.rotate || params?.scale || params?.mirror) {
+	// 	const img = await applyTransformations(Sharp(background), params);
+	// 	await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	// } else
+
+	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 }
 
 
