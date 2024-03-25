@@ -168,15 +168,12 @@ export function generateImagePathsFromSeed(
 async function applyTransformations(image: Sharp.Sharp, params: Params): Promise<Sharp.Sharp> {
 	const metadata = await image.metadata();
 	const originalWidth = metadata.width;
-	const originalHeight = metadata.height;
 
 	if (params.mirror) {
 		image = image.flop();
 	}
 	if (params.rotate) {
-		// Rotate and then resize the image to its original dimensions
-		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } })
-			.resize(originalWidth, originalHeight, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } });
+		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } });
 	}
 	if (params.scale) {
 		if (originalWidth) {
@@ -243,12 +240,10 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 		return layer;
 	}));
 
-	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 0 };
+	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
 
 	// const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
 	// const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
-
-	console.log(`Max Width: ${maxWidth}, Max Height: ${maxHeight}`);
 
 	const background: SharpOptions = {
 		create: {
@@ -258,8 +253,11 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 			background: bg,
 		},
 	};
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
-
+	if (params?.rotate || params?.scale || params?.mirror) {
+		const img = await applyTransformations(Sharp(background), params);
+		await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+	} else
+		await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
 }
 
 

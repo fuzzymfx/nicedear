@@ -38,7 +38,7 @@ The theme of the avatar. Defaults to open-peeps. Available themes include open-p
 When set true, flips the image.
 - [x]  **rotate**: number
 Rotates the image by the given degrees.
-- **background**: string
+- [x] **background**: string
 The hex code of the background color. Defaults to #ffffff.
 - **skincolor**: string
 The hex code of the avatar's skin color. Defaults to #ffffff.
