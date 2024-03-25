@@ -169,6 +169,17 @@ async function applyTransformations(image: Sharp.Sharp, params?: Params): Promis
 	const metadata = await image.metadata();
 	const originalWidth = metadata.width;
 
+	const translateX = params?.transalteX || 0;
+	const translateY = params?.transalteY || 0;
+
+	if (translateX || translateY) {
+		image = image.extend({
+			top: translateY,
+			left: translateX,
+			background: { r: 255, g: 255, b: 255, alpha: 0 }
+		});
+	}
+
 	if (params?.mirror) {
 		image = image.flop();
 	}
@@ -199,44 +210,21 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 	// const skincolor = params?.skincolor;
 	// const hairColor = params?.hairColor;
 
-	const translateX = params?.transalteX;
-	const translateY = params?.transalteY;
-
 	const requiredFeatures = params?.features;
 	const features = await loadFeaturesFromDir(theme, requiredFeatures);
 
 	// specific image paths generated from the seed
 	const imagePaths = generateImagePathsFromSeed(features, seed);
-	// let maxWidth = 0;
-	// let maxHeight = 0;
 
 	// add image paths to layers to create the final image
 	const layers: OverlayOptions[] = await Promise.all(imagePaths.map(async (imgPath, i) => {
-		const feature = features[i];
 		let image: Sharp.Sharp = Sharp(imgPath);
 
 		// Apply transformations to each layer
 		image = await applyTransformations(image, params);
 
-		// const metadata = await image.metadata();
-		// if (metadata.width && metadata.height) {
-		// 	if (params?.rotate) {
-		// 		const angleInRadians = params.rotate * (Math.PI / 180);
-		// 		const newWidth = Math.abs(Math.sin(angleInRadians)) * metadata.height + Math.abs(Math.cos(angleInRadians)) * metadata.width;
-		// 		const newHeight = Math.abs(Math.sin(angleInRadians)) * metadata.width + Math.abs(Math.cos(angleInRadians)) * metadata.height;
-		// 		maxWidth = Math.max(maxWidth, Math.round(newWidth));
-		// 		maxHeight = Math.max(maxHeight, Math.round(newHeight));
-		// 	} else {
-		// 		maxWidth = Math.max(maxWidth, metadata.width);
-		// 		maxHeight = Math.max(maxHeight, metadata.height);
-		// 	}
-		// }
-
-
 		const buffer = await image.toBuffer();
 		const layer: OverlayOptions = { input: buffer };
-		// layer.top = (feature.top || 0) + (translateY || 0);
-		// layer.left = (feature.left || 0) + (translateX || 0);
 		return layer;
 	}));
 
