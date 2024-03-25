@@ -30,27 +30,27 @@ GET http://localhost:3000/?seed=<seed>&theme=<theme>&mirror=<mirror>&rotate=<rot
 
 ### Parameters
 
-- [x] **seed**: string
+- **seed**: string
 The seed for the random generator. Used to generate the same avatar again. If not provided, a random seed is used.
-- [x] **theme**: string
+- **theme**: string
 The theme of the avatar. Defaults to open-peeps. Available themes include open-peeps, female, male, bottts, gridy, identicon, initials, jdenticon, micah, mp, retro, robohash, wavatar, yld.
-- [x] **mirror**: boolean
+- **mirror**: boolean
 When set true, flips the image.
-- [x]  **rotate**: number
+- **rotate**: number
 Rotates the image by the given degrees.
-- [x] **background**: string
+- **background**: string
 The hex code of the background color. Defaults to #ffffff.
-- **skincolor**: string
+- **skinColor**: string (*pending*)
 The hex code of the avatar's skin color. Defaults to #ffffff.
-- **hairColor**: string
+- **hairColor**: string (*pending*)
 The hex code of the avatar's hair color. Defaults to #000000.
-- [x] **scale**: number
+- **scale**: number
 The scale of the avatar. Defaults to 1.
 - **transalteX**: number
 The x-coordinate of the avatar. Defaults to 0.
 - **transalteY**: number
 The y-coordinate of the avatar. Defaults to 0.
-- [x] **features**: string[]
+- **features**: string[]
 The features of the avatar. Available features are face, facial-hair, head. Defaults to face, head.
 
 ### Examples

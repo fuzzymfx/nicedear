@@ -28,7 +28,7 @@ const server = http.createServer(async (req, res) => {
 			const mirror = requestUrl.query.mirror === 'true';
 			const rotate = requestUrl.query.rotate ? parseInt(requestUrl.query.rotate.toString()) : undefined;
 			const background = requestUrl.query.background ? requestUrl.query.background.toString() : undefined;
-			const skincolor = requestUrl.query.skincolor ? requestUrl.query.skincolor.toString() : undefined;
+			const skinColor = requestUrl.query.skincolor ? requestUrl.query.skincolor.toString() : undefined;
 			const hairColor = requestUrl.query.hairColor ? requestUrl.query.hairColor.toString() : undefined;
 
 			const scale = requestUrl.query.scale ? parseFloat(requestUrl.query.scale.toString()) : undefined;
@@ -42,7 +42,7 @@ const server = http.createServer(async (req, res) => {
 				mirror,
 				rotate,
 				background,
-				skincolor,
+				skinColor,
 				hairColor,
 				scale,
 				transalteX,

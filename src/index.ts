@@ -33,7 +33,7 @@ interface Params {
 	mirror?: boolean;
 	rotate?: number;
 	background?: string;
-	skincolor?: string;
+	skinColor?: string;
 	hairColor?: string;
 	scale?: number;
 	transalteX?: number;
@@ -298,7 +298,7 @@ async function main() {
 		mirror: process.argv[4] === 'true',
 		rotate: parseInt(process.argv[5]),
 		background: process.argv[6],
-		skincolor: process.argv[7],
+		skinColor: process.argv[7],
 		hairColor: process.argv[8],
 		scale: parseFloat(process.argv[9]),
 		transalteX: parseFloat(process.argv[10]),
