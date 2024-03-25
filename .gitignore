@@ -107,3 +107,5 @@ dist
 # I use the _output directory to store resulting composite images when manual testing
 _output
 
+.DS_Store
+
