@@ -60,7 +60,7 @@ node dist/index.js foo open-peeps true 45 red skinColor hairColor 1.0 10.0 20.0 
 ```
 
 ```bash
-curl http://localhost:3000/?seed=foo&theme=open-peeps&mirror=true&rotate=45&background=red&skincolor=skinColor&hairColor=hairColor&scale=1.0&transalteX=10.0&transalteY=20.0&features[]=face&features[]=facial-hair&features[]=head
+curl http://localhost:3000/?seed=foo&theme=open-peeps&mirror=true&rotate=45&background=red&skincolor=skinColor&hairColor=hairColor&scale=1.0&transalteX=10.0&transalteY=20.0&&features=face,facial-hair,head
 ```
 
 (*Pro tip: A simple get request returns a random avatar.*)

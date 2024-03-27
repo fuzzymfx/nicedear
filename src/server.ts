@@ -38,6 +38,8 @@ const server = http.createServer(async (req, res) => {
 			const transalteY
 				= requestUrl.query.transalteY ? parseInt(requestUrl.query.transalteY.toString()) : undefined;
 
+			const features = requestUrl.query.features ? requestUrl.query.features.toString().split(',') : undefined;
+
 			const result = await api_call(seed, theme, {
 				mirror,
 				rotate,
@@ -46,7 +48,8 @@ const server = http.createServer(async (req, res) => {
 				hairColor,
 				scale,
 				transalteX,
-				transalteY
+				transalteY,
+				features
 			});
 			const image = await getImageFromPath(result);
 
