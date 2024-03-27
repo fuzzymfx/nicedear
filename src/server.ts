@@ -50,7 +50,7 @@ const server = http.createServer(async (req, res) => {
 			});
 			const image = await getImageFromPath(result);
 
-			res.writeHead(200, { 'Content-Type': 'image/png' });
+			res.writeHead(200, { 'Content-Type': 'image/svg+xml' });
 			res.end(image);
 		} catch (error) {
 			console.error(error);

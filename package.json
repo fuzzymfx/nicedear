@@ -7,10 +7,12 @@
   "author": "injuly, fuzzymfx",
   "license": "MIT",
   "dependencies": {
-    "sharp": "^0.30.7"
+    "sharp": "^0.30.7",
+    "potrace": "^2.1.8"
   },
   "devDependencies": {
     "@types/node": "^18.19.26",
+    "@types/potrace": "^2.1.5",
     "@types/sharp": "^0.30.5",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",

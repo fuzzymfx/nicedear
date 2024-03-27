@@ -1,6 +1,7 @@
 import Sharp, { OverlayOptions, SharpOptions } from 'sharp';
 import path from 'path';
 import fs from 'fs';
+import potrace from 'potrace';
 
 import {
 	getFilesInDir, isPathImage,
@@ -104,7 +105,7 @@ async function loadFeaturesFromDir(theme?: string, requiredFeatures?: Array<stri
 	if (!requiredFeatures || requiredFeatures.length === 0) {
 		featureData = [
 			{ name: 'head', dir: path.join(assetsDir, 'head') },
-			{ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 },
+			{ name: 'face', dir: path.join(assetsDir, 'face'), top: 375, left: 400 },
 		];
 	} else {
 		if (requiredFeatures.includes('head')) {
@@ -112,15 +113,15 @@ async function loadFeaturesFromDir(theme?: string, requiredFeatures?: Array<stri
 		}
 
 		if (requiredFeatures.includes('face')) {
-			featureData.push({ name: 'face', dir: path.join(assetsDir, 'face'), top: 175, left: 200 });
+			featureData.push({ name: 'face', dir: path.join(assetsDir, 'face'), top: 375, left: 400 });
 		}
 
 		if (requiredFeatures.includes('facialHair')) {
 			featureData.push({
 				name: 'facialHair',
 				dir: path.join(assetsDir, 'facial-hair'),
-				top: 175,
-				left: 200,
+				top: 515,
+				left: 360,
 			});
 		}
 	}
@@ -165,35 +166,40 @@ export function generateImagePathsFromSeed(
  * @returns The transformed image.
  */
 
-async function applyTransformations(image: Sharp.Sharp, params?: Params): Promise<Sharp.Sharp> {
-	const metadata = await image.metadata();
-	const originalWidth = metadata.width;
+async function applyTransformations(path: string, params?: Params): Promise<string> {
+  if (params?.mirror) {
+    const outputPath = path.replace('.png', '_mirrored.png');
+    await Sharp(path).flop().toFile(outputPath);
+		fs.unlinkSync(path);
+		fs.renameSync(outputPath, path);
+  }
 
-	const translateX = params?.transalteX || 0;
-	const translateY = params?.transalteY || 0;
-
-	if (translateX || translateY) {
-		image = image.extend({
-			top: translateY,
-			left: translateX,
-			background: { r: 255, g: 255, b: 255, alpha: 0 }
-		});
+	if(params?.rotate) {
+    const outputPath = path.replace('.png', '_rotated.png');
+    await Sharp(path)
+        .rotate(params.rotate, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .toFile(outputPath);
+    fs.unlinkSync(path);
+    fs.renameSync(outputPath, path);
 	}
 
-	if (params?.mirror) {
-		image = image.flop();
+	if(params?.scale) {
+		const outputPath = path.replace('.png', '_scaled.png');
+		await Sharp(path).resize({ width: 1000 * params.scale, height: 1000 * params.scale }).toFile(outputPath);
+		fs.unlinkSync(path);
+		fs.renameSync(outputPath, path);
 	}
-	if (params?.rotate) {
-		image = image.rotate(params.rotate, { background: { r: 255, g: 255, b: 255, alpha: 0 } });
-	}
-	if (originalWidth) {
-		let width = Math.round(originalWidth * 0.5); // Always scale to half
-		if (params?.scale) {
-			width = Math.round(width * params.scale); // Apply additional scale if provided
-		}
-		image = image.resize(width);
-	}
-	return image;
+
+	await new Promise<void>((resolve, reject) => {
+    potrace.trace(path, function(err, svgString) {
+      if (err) reject(err);
+      fs.writeFileSync(path.replace('.png', '.svg'), svgString);
+      console.log('SVG file created');
+      resolve();
+    });
+  });
+
+  return path.replace('.png', '.svg');
 }
 
 /**
@@ -204,12 +210,7 @@ async function applyTransformations(image: Sharp.Sharp, params?: Params): Promis
  * @param params: The parameters to use for image generation.
  */
 
-async function buildImage(pathHash: number, seed: string, theme?: string, params?: Params): Promise<void> {
-
-	const backgroundColor = params?.background;
-	// const skincolor = params?.skincolor;
-	// const hairColor = params?.hairColor;
-
+async function buildImage(pathHash: number, seed: string, theme?: string, params?: Params): Promise<string> {
 	const requiredFeatures = params?.features;
 	const features = await loadFeaturesFromDir(theme, requiredFeatures);
 
@@ -218,35 +219,23 @@ async function buildImage(pathHash: number, seed: string, theme?: string, params
 
 	// add image paths to layers to create the final image
 	const layers: OverlayOptions[] = await Promise.all(imagePaths.map(async (imgPath, i) => {
-		let image: Sharp.Sharp = Sharp(imgPath);
-
-		// Apply transformations to each layer
-		image = await applyTransformations(image, params);
-
-		const buffer = await image.toBuffer();
-		const layer: OverlayOptions = { input: buffer };
+		const feature = features[i];
+		const layer: OverlayOptions = { input: imgPath };
+		if (feature.top) layer.top = feature.top;
+		if (feature.left) layer.left = feature.left;
 		return layer;
 	}));
 
-	const bg = backgroundColor ? hexToRgbA(backgroundColor) : { r: 255, g: 255, b: 255, alpha: 1 };
-
-	// const skin = skincolor ? hexToRgbA(skincolor) : { r: 255, g: 182, b: 193, alpha: 1 };
-	// const hair = hairColor ? hexToRgbA(hairColor) : { r: 0, g: 0, b: 0, alpha: 1 };
-
-	const background: SharpOptions = {
+	const transparentBackground: SharpOptions = {
 		create: {
-			width: 500,
-			height: 500,
+			width: 1000,
+			height: 1000,
 			channels: 4,
-			background: bg,
+			background: { r: 255, g: 255, b: 255, alpha: 0 }
 		},
 	};
-	// if (params?.rotate || params?.scale || params?.mirror) {
-	// 	const img = await applyTransformations(Sharp(background), params);
-	// 	await img.composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
-	// } else
-
-	await Sharp(background).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+		await Sharp(transparentBackground).composite(layers).png().toFile(`_output/${seed}${pathHash}.png`);
+		return await applyTransformations(`_output/${seed}${pathHash}.png`, params);
 }
 
 
@@ -277,18 +266,16 @@ export async function api_call(argSeed?: string, theme?: string, params?: Params
 	const pathHash = Math.abs(hashString(`${argSeed}_${theme}_${paramsString}`));
 
 	// return existing file 
-	if (file_exists(`_output/${argSeed}${pathHash}.png`)) {
-		console.log(`File exists: _output/${argSeed}${pathHash}.png`);
-		return `_output/${argSeed}${pathHash}.png`;
+	if (file_exists(`_output/${argSeed}${pathHash}.svg`)) {
+		console.log(`File exists: _output/${argSeed}${pathHash}.svg`);
+		return `_output/${argSeed}${pathHash}.svg`;
 	}
 
-	console.log(`Creating: _output/${argSeed}${pathHash}.png`);
+	console.log(`Creating: _output/${argSeed}${pathHash}.svg`);
 	const seedString = argSeed || Math.random().toString(36).substring(7) + Math.random().toString(36).substring(7);
 	const seed = readSeed(seedString);
 
-	await buildImage(pathHash, seed, theme, params);
-
-	return `_output/${seed}${pathHash}.png`;
+	return await buildImage(pathHash, seed, theme, params);
 }
 
 async function main() {
