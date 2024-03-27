@@ -167,37 +167,42 @@ export function generateImagePathsFromSeed(
  */
 
 async function applyTransformations(path: string, params?: Params): Promise<string> {
+  let currentPath = path;
+
   if (params?.mirror) {
-    const outputPath = path.replace('.png', '_mirrored.png');
-    await Sharp(path).flop().toFile(outputPath);
-		fs.unlinkSync(path);
-		fs.renameSync(outputPath, path);
+    const outputPath = currentPath.replace('.png', '_mirrored.png');
+    await Sharp(currentPath).flop().toFile(outputPath);
+    fs.unlinkSync(currentPath); // Delete the original/mirrored image
+    currentPath = outputPath;
   }
 
-	if(params?.rotate) {
-    const outputPath = path.replace('.png', '_rotated.png');
-    await Sharp(path)
+  if(params?.rotate) {
+    const outputPath = currentPath.replace('.png', '_rotated.png');
+    await Sharp(currentPath)
         .rotate(params.rotate, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .toFile(outputPath);
-    fs.unlinkSync(path);
-    fs.renameSync(outputPath, path);
-	}
+    fs.unlinkSync(currentPath); // Delete the mirrored/rotated image
+    currentPath = outputPath;
+  }
 
-	if(params?.scale) {
-		const outputPath = path.replace('.png', '_scaled.png');
-		await Sharp(path).resize({ width: 1000 * params.scale, height: 1000 * params.scale }).toFile(outputPath);
-		fs.unlinkSync(path);
-		fs.renameSync(outputPath, path);
-	}
+  if(params?.scale) {
+    const outputPath = currentPath.replace('.png', '_scaled.png');
+    await Sharp(currentPath).resize({ width: 1000 * params.scale, height: 1000 * params.scale }).toFile(outputPath);
+    fs.unlinkSync(currentPath); // Delete the rotated/scaled image
+    currentPath = outputPath;
+  }
 
-	await new Promise<void>((resolve, reject) => {
-    potrace.trace(path, function(err, svgString) {
+  await new Promise<void>((resolve, reject) => {
+    potrace.trace(currentPath, function(err, svgString) {
       if (err) reject(err);
-      fs.writeFileSync(path.replace('.png', '.svg'), svgString);
+      fs.writeFileSync(currentPath.replace('.png', '.svg'), svgString);
       console.log('SVG file created');
       resolve();
     });
   });
+
+
+  fs.renameSync(currentPath.replace('.png', '.svg'), path.replace('.png', '.svg'));
 
   return path.replace('.png', '.svg');
 }
